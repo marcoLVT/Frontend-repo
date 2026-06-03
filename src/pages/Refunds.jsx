@@ -37,6 +37,7 @@ export default function Refunds() {
   return (
     <div>
       <h2>Reembolsos</h2>
+      <p>Registros basados en la tabla <strong>reembolsos</strong>, incluyendo el monto y cliente de la transacción asociada.</p>
       <div style={{marginBottom:12}}>
         <button onClick={onCreate}>Nuevo reembolso</button>
       </div>
@@ -52,8 +53,12 @@ export default function Refunds() {
           <thead>
             <tr>
               <th>ID</th>
+              <th>Solicitud</th>
               <th>Transacción</th>
+              <th>Cliente</th>
               <th>Monto</th>
+              <th>Estado</th>
+              <th>Fecha</th>
               <th></th>
             </tr>
           </thead>
@@ -61,8 +66,12 @@ export default function Refunds() {
             {items.map(r => (
               <tr key={r.id}>
                 <td>{r.id}</td>
-                <td>{r.id_solicitud_reembolso || r.transaccion_id || r.transaction_id || '-'}</td>
-                <td>{r.monto || r.amount || '-'}</td>
+                <td>{r.id_solicitud_reembolso || '-'}</td>
+                <td>{r.transaccion_id || '-'}</td>
+                <td>{r.nombre_cliente || '-'}</td>
+                <td>{r.transaccion_monto || r.monto || '-'}</td>
+                <td>{r.estado_nombre || '-'}</td>
+                <td>{(r.fecha_creacion || r.created_at) ? new Date(r.fecha_creacion || r.created_at).toLocaleString() : '-'}</td>
                 <td>
                   <button onClick={()=>onEdit(r)}>Editar</button>
                   <button onClick={()=>onDelete(r.id)} style={{marginLeft:8}}>Eliminar</button>

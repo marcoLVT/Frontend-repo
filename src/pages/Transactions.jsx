@@ -37,6 +37,7 @@ export default function Transactions() {
   return (
     <div>
       <h2>Transacciones</h2>
+      <p>Registros basados en la tabla <strong>transacciones</strong>.</p>
       <div style={{marginBottom:12}}>
         <button onClick={onCreate}>Nueva transacción</button>
       </div>
@@ -52,9 +53,13 @@ export default function Transactions() {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Usuario</th>
+              <th>Solicitud</th>
+              <th>Transacción</th>
+              <th>Cliente</th>
+              <th>Teléfono</th>
               <th>Monto</th>
               <th>Estado</th>
+              <th>Fecha</th>
               <th></th>
             </tr>
           </thead>
@@ -62,9 +67,13 @@ export default function Transactions() {
             {items.map(t => (
               <tr key={t.id}>
                 <td>{t.id}</td>
-                <td>{t.nombre_cliente || t.nombre || t.user_name || t.user || t.usuario || '-'}</td>
-                <td>{t.monto || t.amount || t.total || '-'}</td>
-                <td>{t.estado || t.status || '-'}</td>
+                <td>{t.id_solicitud || '-'}</td>
+                <td>{t.id_transaccion_pasarela || '-'}</td>
+                <td>{t.nombre_cliente || '-'}</td>
+                <td>{t.telefono || '-'}</td>
+                <td>{t.monto ?? '-'}</td>
+                <td>{t.estado_nombre || t.estado || '-'}</td>
+                <td>{(t.fecha_creacion || t.created_at) ? new Date(t.fecha_creacion || t.created_at).toLocaleString() : '-'}</td>
                 <td>
                   <button onClick={()=>onEdit(t)}>Editar</button>
                   <button onClick={()=>onDelete(t.id)} style={{marginLeft:8}}>Eliminar</button>

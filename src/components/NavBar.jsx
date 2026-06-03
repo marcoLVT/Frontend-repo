@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { setAuthToken } from '../services/api'
+import { logout, getCurrentUserInfo } from '../services/api'
 
 export default function NavBar() {
-  const [token, setToken] = useState(null)
+  const [user, setUser] = useState(null)
   const navigate = useNavigate()
 
   useEffect(()=>{
-    setToken(localStorage.getItem('token'))
-    const onStorage = ()=> setToken(localStorage.getItem('token'))
+    setUser(getCurrentUserInfo())
+    const onStorage = ()=> setUser(getCurrentUserInfo())
     window.addEventListener('storage', onStorage)
     return ()=> window.removeEventListener('storage', onStorage)
   },[])
 
-  const logout = () => {
-    setAuthToken(null)
-    setToken(null)
+  const handleLogout = () => {
+    logout()
+    setUser(null)
     navigate('/')
   }
 
@@ -27,8 +27,11 @@ export default function NavBar() {
           <Link to="/transacciones">Transacciones</Link>
           <Link to="/reembolsos">Reembolsos</Link>
           <Link to="/usuarios">Usuarios</Link>
-          {token ? (
-            <button onClick={logout} style={{marginLeft:12}}>Cerrar sesión</button>
+          {user ? (
+            <>
+              <span style={{marginLeft:12, color:'#111'}}>Hola, {user.nombre || user.usuario}</span>
+              <button onClick={handleLogout} style={{marginLeft:12}}>Cerrar sesión</button>
+            </>
           ) : (
             <>
               <Link to="/login" style={{marginLeft:12}}>Login</Link>

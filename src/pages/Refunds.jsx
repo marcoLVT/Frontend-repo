@@ -1,65 +1,63 @@
 import React, { useEffect, useState } from 'react'
 import api from '../services/api'
-import RefundForm from '../components/RefundForm'
 
 export default function Refunds() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [editing, setEditing] = useState(null)
-  const [showForm, setShowForm] = useState(false)
 
   const fetch = () => {
-    setLoading(true); setError(null)
-    api.get('/reembolsos')
-      .then(res => setItems(res.data || []))
-      .catch(err => setError(err.response?.data?.message || err.message || 'Error'))
-      .finally(()=>setLoading(false))
-  }
+    setLoading(true)
+    setError(null)
 
-  useEffect(()=>{ fetch() }, [])
-
-  const onCreate = () => { setEditing(null); setShowForm(true) }
-  const onEdit = (r) => { setEditing(r); setShowForm(true) }
-  const onDelete = async id => {
-    if (!confirm('Eliminar reembolso?')) return
-    try {
-      await api.delete(`/reembolsos/${id}`)
-      fetch()
-    } catch (err) {
-      alert(err.response?.data?.message || err.message || 'Error')
+    // 1. Obtener el usuario logueado desde el Local Storage
+    const userRaw = localStorage.getItem('currentUser')
+    
+    if (!userRaw) {
+      setError('No se encontró el usuario autenticado.')
+      setLoading(false)
+      return
     }
+
+    const userObj = JSON.parse(userRaw)
+    const personaId = userObj.id_persona
+
+    if (!personaId) {
+      setError('El usuario no cuenta con un ID de persona válido.')
+      setLoading(false)
+      return
+    }
+
+    // 2. Cargar historial filtrado desde el endpoint seguro
+    api.get(`/reembolsos/persona/${personaId}`)
+      .then(res => setItems(res.data || []))
+      .catch(err => setError(err.response?.data?.message || err.message || 'Error al cargar los reembolsos'))
+      .finally(() => setLoading(false))
   }
+
+  useEffect(() => { fetch() }, [])
 
   if (loading) return <p>Cargando reembolsos...</p>
   if (error) return <p>Error: {error}</p>
 
   return (
     <div>
-      <h2>Reembolsos</h2>
-      <p>Registros basados en la tabla <strong>reembolsos</strong>, incluyendo el monto y cliente de la transacción asociada.</p>
-      <div style={{marginBottom:12}}>
-        <button onClick={onCreate}>Nuevo reembolso</button>
-      </div>
-
-      {showForm && (
-        <RefundForm initial={editing} onSaved={()=>{ setShowForm(false); fetch() }} onCancel={()=>setShowForm(false)} />
-      )}
+      <h2>Mis Reembolsos</h2>
+      <p>Historial de devoluciones asociadas a tu cuenta de cliente.</p>
 
       {items.length === 0 ? (
-        <p>No hay reembolsos.</p>
+        <p>No tienes reembolsos registrados en tu historial.</p>
       ) : (
         <table className="table">
           <thead>
             <tr>
               <th>ID</th>
-              <th>Solicitud</th>
-              <th>Transacción</th>
+              <th>Solicitud de Reembolso</th>
+              <th>ID Transacción</th>
               <th>Cliente</th>
               <th>Monto</th>
               <th>Estado</th>
               <th>Fecha</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -70,11 +68,18 @@ export default function Refunds() {
                 <td>{r.transaccion_id || '-'}</td>
                 <td>{r.nombre_cliente || '-'}</td>
                 <td>{r.transaccion_monto || r.monto || '-'}</td>
-                <td>{r.estado_nombre || '-'}</td>
-                <td>{(r.fecha_creacion || r.created_at) ? new Date(r.fecha_creacion || r.created_at).toLocaleString() : '-'}</td>
                 <td>
-                  <button onClick={()=>onEdit(r)}>Editar</button>
-                  <button onClick={()=>onDelete(r.id)} style={{marginLeft:8}}>Eliminar</button>
+                  <span style={{ 
+                    color: '#d9534f', 
+                    fontWeight: 'bold' 
+                  }}>
+                    {r.estado_nombre || r.estado || '-'}
+                  </span>
+                </td>
+                <td>
+                  {(r.fecha_creacion || r.created_at) 
+                    ? new Date(r.fecha_creacion || r.created_at).toLocaleString() 
+                    : '-'}
                 </td>
               </tr>
             ))}

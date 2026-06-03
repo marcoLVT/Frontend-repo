@@ -15,7 +15,14 @@ export default function Login() {
     setError(null)
     setLoading(true)
     try {
-      const res = await api.post('/usuarios/login', { usuario_o_correo: usuario, contrasena })
+      const res = await api.post('/usuarios/login', 
+          { usuario_o_correo: usuario, contrasena },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
       const token = res.data?.token || res.data?.access_token || res.data?.token
       const user = res.data?.usuario || null
       if (token) saveAuth(user, token)

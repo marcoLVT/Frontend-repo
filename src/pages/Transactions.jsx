@@ -19,7 +19,6 @@ export default function Transactions() {
     setError(null)
 
     const userRaw = localStorage.getItem('currentUser')
-    
     if (!userRaw) {
       setError('No se encontró el usuario autenticado.')
       setLoading(false)
@@ -43,16 +42,11 @@ export default function Transactions() {
 
   useEffect(() => { fetch() }, [])
 
-  const onCreate = () => { 
-    navigate('/transacciones/nueva') 
-  }
-  
-  const onEdit = (t) => { 
-    navigate(`/transacciones/editar/${t.id}`, { state: { transaction: t } }) 
-  }
+  const onCreate = () => { navigate('/transacciones/nueva') }
+  const onEdit = (t) => { navigate(`/transacciones/editar/${t.id}`, { state: { transaction: t } }) }
 
   const onDelete = async id => {
-    if (!confirm('¿Eliminar transacción?')) return
+    if (!confirm('¿Está seguro de eliminar esta transacción?')) return
     try {
       await api.delete(`/transacciones/${id}`)
       fetch()
@@ -61,7 +55,6 @@ export default function Transactions() {
     }
   }
 
-  // --- ENVIAR REEMBOLSO AL BACKEND ---
   const handleConfirmRefund = async (e) => {
     e.preventDefault()
     if (!refundSolicitud.trim() || !refundMotivo.trim()) {
@@ -78,12 +71,9 @@ export default function Transactions() {
       })
 
       alert('Reembolso procesado con éxito')
-      
-      // Cerrar modal y limpiar formulario
       setRefundingItem(null)
       setRefundSolicitud('')
       setRefundMotivo('')
-      
       fetch()
     } catch (err) {
       alert(err.response?.data?.message || err.message || 'Error al procesar el reembolso')
@@ -92,113 +82,202 @@ export default function Transactions() {
     }
   }
 
-  if (loading) return <p>Cargando transacciones...</p>
-  if (error) return <p>Error: {error}</p>
+  // Estilos dinámicos para los Badges de Estado
+  const getStatusBadgeStyle = (estado) => {
+    const term = (estado || '').toLowerCase();
+    let bg = '#e2e8f0'; 
+    let color = '#4a5568';
+
+    if (term.includes('aprobado') || term.includes('completado') || term.includes('exitoso') || term.includes('pagado')) {
+      bg = '#def7ec'; color = '#03543f';
+    } else if (term.includes('pendiente') || term.includes('proceso')) {
+      bg = '#fef3c7'; color = '#92400e';
+    } else if (term.includes('reembolsado') || term.includes('devuelto')) {
+      bg = '#e1effe'; color = '#1e429f';
+    } else if (term.includes('rechazado') || term.includes('cancelado') || term.includes('fallido')) {
+      bg = '#fde8e8'; color = '#9b1c1c';
+    }
+
+    return {
+      backgroundColor: bg,
+      color: color,
+      padding: '4px 10px',
+      borderRadius: '12px',
+      fontSize: '0.82rem',
+      fontWeight: '600',
+      display: 'inline-block'
+    };
+  };
+
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '40px', color: '#64748b', fontSize: '1.1rem', fontFamily: 'sans-serif' }}>
+       Cargando registros de transacciones...
+    </div>
+  )
+  
+  if (error) return (
+    <div style={{ backgroundColor: '#fde8e8', color: '#9b1c1c', padding: '16px', borderRadius: '8px', border: '1px solid #f8b4b4', margin: '20px', fontFamily: 'sans-serif' }}>
+      <strong> Error:</strong> {error}
+    </div>
+  )
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }}>
-      <h2>Transacciones</h2>
-      <p>Registros basados en la tabla <strong>transacciones</strong>.</p>
+    <div style={{ fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif', padding: '24px', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={onCreate}>Nueva transacción</button>
+      {/* Encabezado e Inicializador */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h2 style={{ margin: '0 0 6px 0', color: '#1e293b', fontSize: '1.75rem', fontWeight: '700' }}>Transacciones</h2>
+          <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem' }}>Registros e historial analítico basados en la tabla principal de auditoría.</p>
+        </div>
+        <button 
+          onClick={onCreate}
+          style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '6px', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer', transition: 'background-color 0.2s', boxShadow: '0 2px 4px rgba(37,99,235,0.2)' }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+        >
+          Nuevo
+        </button>
       </div>
 
       {items.length === 0 ? (
-        <p>No hay transacciones.</p>
+        <div style={{ backgroundColor: '#ffffff', textAlign: 'center', padding: '40px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', color: '#64748b' }}>
+          <p style={{ fontSize: '1.1rem', margin: '0 0 8px 0' }}>No se encontraron transacciones operacionales.</p>
+        </div>
       ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Solicitud</th>
-              <th>Transacción</th>
-              <th>Cliente</th>
-              <th>Teléfono</th>
-              <th>Monto</th>
-              <th>Estado</th>
-              <th>Fecha</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map(t => {
-              const esReembolsado = (t.estado_nombre || t.estado || '').toUpperCase() === 'REEMBOLSADO';
-              return (
-                <tr key={t.id}>
-                  <td>{t.id}</td>
-                  <td>{t.id_solicitud || '-'}</td>
-                  <td>{t.id_transaccion_pasarela || '-'}</td>
-                  <td>{t.nombre_cliente || '-'}</td>
-                  <td>{t.telefono || '-'}</td>
-                  <td>{t.monto ?? '-'}</td>
-                  <td>
-                    <span style={{ 
-                      color: esReembolsado ? '#d9534f' : 'inherit', 
-                      fontWeight: esReembolsado ? 'bold' : 'normal' 
-                    }}>
-                      {t.estado_nombre || t.estado || '-'}
-                    </span>
-                  </td>
-                  <td>{(t.fecha_creacion || t.created_at) ? new Date(t.fecha_creacion || t.created_at).toLocaleString() : '-'}</td>
-                  <td>
-                    <button onClick={() => onEdit(t)} disabled={esReembolsado}>Editar</button>
-                    
-                    <button 
-                      onClick={() => setRefundingItem(t)} 
-                      disabled={esReembolsado}
+        /* Tarjeta Contenedora de la Tabla */
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>ID</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>Solicitud</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>ID Pasarela</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>Cliente</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>Teléfono</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>Monto</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>Estado</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600' }}>Fecha</th>
+                  <th style={{ padding: '14px 16px', color: '#475569', fontWeight: '600', textAlign: 'center' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((t, idx) => {
+                  const esReembolsado = (t.estado_nombre || t.estado || '').toUpperCase() === 'REEMBOLSADO';
+                  return (
+                    <tr 
+                      key={t.id} 
                       style={{ 
-                        marginLeft: 8, 
-                        backgroundColor: esReembolsado ? '#e7e7e7' : '#f0ad4e', 
-                        color: esReembolsado ? '#a1a1a1' : 'black',
-                        cursor: esReembolsado ? 'not-allowed' : 'pointer',
-                        border: '1px solid #ccc'
+                        borderBottom: '1px solid #f1f5f9',
+                        backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc'
                       }}
                     >
-                      {esReembolsado ? 'Reembolsado' : 'Reembolsar'}
-                    </button>
-                    
-                    <button onClick={() => onDelete(t.id)} style={{ marginLeft: 8 }}>Eliminar</button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                      <td style={{ padding: '14px 16px', fontWeight: 'bold', color: '#334155' }}>#{t.id}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748b' }}>{t.id_solicitud || '-'}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748b', fontFamily: 'monospace' }}>{t.id_transaccion_pasarela || '-'}</td>
+                      <td style={{ padding: '14px 16px', color: '#334155', fontWeight: '500' }}>{t.nombre_cliente || '-'}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748b' }}>{t.telefono || '-'}</td>
+                      <td style={{ padding: '14px 16px', color: '#0f172a', fontWeight: '600' }}>
+                        {t.monto ?? false ? `$${parseFloat(t.monto).toFixed(2)}` : '-'}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={getStatusBadgeStyle(t.estado_nombre || t.estado)}>
+                          {t.estado_nombre || t.estado || '-'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '0.85rem' }}>
+                        {(t.fecha_creacion || t.created_at) ? new Date(t.fecha_creacion || t.created_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        {/* Botón Editar */}
+                        <button 
+                          onClick={() => onEdit(t)} 
+                          disabled={esReembolsado}
+                          style={{ backgroundColor: esReembolsado ? '#f1f5f9' : '#ffffff', color: esReembolsado ? '#94a3b8' : '#2563eb', border: '1px solid ' + (esReembolsado ? '#e2e8f0' : '#bfdbfe'), padding: '6px 12px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', cursor: esReembolsado ? 'not-allowed' : 'pointer', marginRight: '6px' }}
+                        >
+                          Editar
+                        </button>
+                        
+                        {/* Botón Reembolsar */}
+                        <button 
+                          onClick={() => setRefundingItem(t)} 
+                          disabled={esReembolsado}
+                          style={{ 
+                            backgroundColor: esReembolsado ? '#f1f5f9' : '#f59e0b', 
+                            color: esReembolsado ? '#94a3b8' : '#ffffff',
+                            border: 'none',
+                            padding: '6px 12px', 
+                            borderRadius: '4px', 
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            cursor: esReembolsado ? 'not-allowed' : 'pointer',
+                            marginRight: '6px'
+                          }}
+                        >
+                          {esReembolsado ? 'Reembolsado' : 'Reembolsar'}
+                        </button>
+                        
+                        {/* Botón Eliminar */}
+                        <button 
+                          onClick={() => onDelete(t.id)} 
+                          style={{ backgroundColor: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '6px 12px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', cursor: 'pointer' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff' }}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
-      {/* ==================== MODAL CAPA OSCURA (BACKDROP) ==================== */}
+      {/* ==================== MODAL DE REEMBOLSO COMPLETAMENTE DECORADO ==================== */}
       {refundingItem && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
         }}>
-          {/* CONTENEDOR DEL MODAL */}
           <div style={{
-            backgroundColor: 'white',
-            padding: '24px',
-            borderRadius: '8px',
-            width: '100%',
-            maxWidth: '500px',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-            animation: 'fadeIn 0.3s ease'
+            backgroundColor: '#ffffff', padding: '28px', borderRadius: '12px',
+            width: '90%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e2e8f0'
           }}>
-            <h3 style={{ marginTop: 0, color: '#d9534f' }}>Procesar Reembolso</h3>
-            <p>Vas a solicitar el reembolso para la <strong>Transacción #{refundingItem.id}</strong>.</p>
-            <p>Monto original: <strong style={{ fontSize: '1.2em' }}>${refundingItem.monto}</strong></p>
-            <hr style={{ border: '0', borderTop: '1px solid #eee', margin: '15px 0' }} />
             
+            {/* Cabecera del Modal */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.3rem', fontWeight: '700' }}>Emitir Reembolso</h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>Transacción de origen: <strong>#{refundingItem.id}</strong></p>
+              </div>
+            </div>
+
+            {/* Caja de Datos */}
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '14px', borderRadius: '8px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
+                <span style={{ color: '#64748b' }}>Cliente:</span>
+                <span style={{ color: '#1e293b', fontWeight: '600' }}>{refundingItem.nombre_cliente}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', alignItems: 'center' }}>
+                <span style={{ color: '#64748b' }}>Monto a retornar:</span>
+                <span style={{ color: '#b91c1c', fontWeight: '700', fontSize: '1.2rem' }}>
+                  ${refundingItem.monto ? parseFloat(refundingItem.monto).toFixed(2) : '0.00'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Formulario */}
             <form onSubmit={handleConfirmRefund}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 'bold' }}>ID Solicitud de Reembolso:</label>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#344054', fontSize: '0.88rem' }}>
+                  Código/ID de la Solicitud:
+                </label>
                 <input 
                   type="text" 
                   value={refundSolicitud} 
@@ -206,23 +285,26 @@ export default function Transactions() {
                   placeholder="Ej: REEM-2026-XYZ"
                   disabled={refundLoading}
                   required
-                  style={{ width: '100%', padding: '8px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}
+                  style={{ width: '100%', padding: '10px 14px', boxSizing: 'border-box', borderRadius: '6px', border: '1px solid #d0d5dd', fontSize: '0.9rem', outline: 'none', transition: 'border-color 0.2s' }}
                 />
               </div>
 
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 'bold' }}>Motivo del Reembolso:</label>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#344054', fontSize: '0.88rem' }}>
+                  Motivo de la Devolución:
+                </label>
                 <textarea 
                   value={refundMotivo} 
                   onChange={e => setRefundMotivo(e.target.value)}
-                  placeholder="Explique la razón del reembolso..."
+                  placeholder="Detalla detalladamente el motivo para el área financiera..."
                   disabled={refundLoading}
                   required
-                  style={{ width: '100%', padding: '8px', boxSizing: 'border-box', minHeight: '80px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '10px 14px', boxSizing: 'border-box', minHeight: '90px', borderRadius: '6px', border: '1px solid #d0d5dd', fontSize: '0.9rem', outline: 'none', resize: 'none' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              {/* Botones de acción del Form */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button 
                   type="button" 
                   onClick={() => {
@@ -231,16 +313,16 @@ export default function Transactions() {
                     setRefundMotivo('');
                   }} 
                   disabled={refundLoading} 
-                  style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#f5f5f5', cursor: 'pointer' }}
+                  style={{ padding: '10px 16px', borderRadius: '6px', border: '1px solid #d0d5dd', backgroundColor: '#ffffff', color: '#344054', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer' }}
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit" 
                   disabled={refundLoading} 
-                  style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: '#d9534f', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ padding: '10px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#dc2626', color: 'white', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                 >
-                  {refundLoading ? 'Procesando...' : 'Confirmar Reembolso'}
+                  {refundLoading ? 'Procesando...' : 'Aprobar Reembolso'}
                 </button>
               </div>
             </form>
